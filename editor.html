@@ -115,10 +115,11 @@
                 showToastr('warning', 'ファイルが開かれていません。', null);
                 return;
             }
+            const content = editor.getValue();
+            if (!isValidJson(content)) { return; }
 
             let handle = await fileHandle;
             try {
-                const content = editor.getValue();
                 const compressed = pako.gzip(content);
                 const writer = await handle.createWritable();
                 await writer.write(compressed);
@@ -126,6 +127,17 @@
                 showToastr('success', 'OCSファイルを保存しました。', null);
             } catch (error) {
                 showToastr('error', 'OCSファイルの保存に失敗しました。', error);
+            }
+        }
+
+        // json形式チェック
+        function isValidJson(json) {
+            try {
+                JSON.parse(json);
+                return true;
+            } catch (error) {
+                showToastr('error', '不正なJson形式です。', error);
+                return false;
             }
         }
 
