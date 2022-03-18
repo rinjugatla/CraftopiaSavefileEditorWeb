@@ -120,7 +120,8 @@
 
             let handle = await fileHandle;
             try {
-                const compressed = pako.gzip(content);
+                // 整形に使用した改行、空白を削除して保存
+                const compressed = pako.gzip(JSON.stringify(JSON.parse(content)));
                 const writer = await handle.createWritable();
                 await writer.write(compressed);
                 await writer.close();
