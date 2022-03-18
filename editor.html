@@ -111,12 +111,12 @@
 
         // OCSファイルを上書き保存
         async function saveOcs() {
-            if (fileHandle == null) { 
+            if (fileHandle == null) {
                 showToastr('warning', 'ファイルが開かれていません。', null);
-                return; 
+                return;
             }
-            let handle = await fileHandle;
 
+            let handle = await fileHandle;
             try {
                 const content = editor.getValue();
                 const compressed = pako.gzip(content);
@@ -127,7 +127,6 @@
             } catch (error) {
                 showToastr('error', 'OCSファイルの保存に失敗しました。', error);
             }
-
         }
 
         // トースト通知
