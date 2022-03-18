@@ -39,6 +39,7 @@
         function loadedPage() {
             initEditor();
 
+            // ドラッグ
             $(document).on('dragover', '#editor', function (_e) {
                 var e = _e;
                 if (_e.originalEvent) {
@@ -49,7 +50,9 @@
                 e.dataTransfer.dropEffect = 'copy';
             });
 
-            $(document).on('drop', '#editor', function (_e) {
+            let fileHandle;
+            // ドラック&ドロップでOCS読み込み
+            $(document).on('drop', '#editor', async function (_e) {
                 var e = _e;
                 if (_e.originalEvent) {
                     e = _e.originalEvent;
@@ -61,7 +64,7 @@
                 for (var i = 0; i < items.length; i++) {
                     let item = items[i];
                     if (item.kind != 'file') { continue; }
-                    let handle = item.getAsFileSystemHandle();
+                    fileHandle = item.getAsFileSystemHandle();
                     let file = item.getAsFile();
                     if (!file.name.endsWith('ocs')) { continue; }
 
@@ -80,8 +83,33 @@
                     break;
                 }
             });
+
+            // OCSファイルを上書き保存
+            async function saveOcs() {
+                if (fileHandle == null) { return; }
+                let handle = await fileHandle;
+
+                const content = editor.getValue();
+                const compressed = pako.gzip(content);
+                const writer = await handle.createWritable();
+                await writer.write(compressed)
+                await writer.close()
+            }
+
+            // Ctrl+Sにフック
+            $(window).bind('keydown', async function (e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch (String.fromCharCode(e.which).toLowerCase()) {
+                        case 's':
+                            e.preventDefault();
+                            await saveOcs();
+                            break;
+                    }
+                }
+            });
         }
 
+        // エディタ初期化
         var editor
         function initEditor() {
             editor = ace.edit("editor");
