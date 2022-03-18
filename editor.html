@@ -35,7 +35,8 @@
     <script src="lib/ace/src-min/mode-json.js" type="text/javascript" charset="utf-8"></script>
     <script>
         window.addEventListener('load', loadedPage);
-
+        
+        let fileHandle;
         function loadedPage() {
             initEditor();
 
@@ -49,8 +50,7 @@
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'copy';
             });
-
-            let fileHandle;
+            
             // ドラック&ドロップでOCS読み込み
             $(document).on('drop', '#editor', async function (_e) {
                 var e = _e;
@@ -84,18 +84,6 @@
                 }
             });
 
-            // OCSファイルを上書き保存
-            async function saveOcs() {
-                if (fileHandle == null) { return; }
-                let handle = await fileHandle;
-
-                const content = editor.getValue();
-                const compressed = pako.gzip(content);
-                const writer = await handle.createWritable();
-                await writer.write(compressed)
-                await writer.close()
-            }
-
             // Ctrl+Sにフック
             $(window).bind('keydown', async function (e) {
                 if (e.ctrlKey || e.metaKey) {
@@ -117,6 +105,18 @@
             var jsonMode = ace.require("ace/mode/json").Mode;
             editor.session.setMode(new jsonMode());
         }
+
+        // OCSファイルを上書き保存
+        async function saveOcs() {
+                if (fileHandle == null) { return; }
+                let handle = await fileHandle;
+
+                const content = editor.getValue();
+                const compressed = pako.gzip(content);
+                const writer = await handle.createWritable();
+                await writer.write(compressed)
+                await writer.close()
+            }
     </script>
 </head>
 
