@@ -12,13 +12,12 @@
             height: 100%;
         }
 
-        #filename{
+        #filename {
             color: white;
             background-color: #141414;
             font-size: large;
             text-align: center;
         }
-
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
         integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w=="
@@ -58,18 +57,21 @@
                 e.stopPropagation();
                 e.preventDefault();
 
-                var files = e.dataTransfer.files;
-                for (var i = 0, file; file = files[i]; i++) {
-                    // ocsのみ読み込み
+                var items = e.dataTransfer.items;
+                for (var i = 0; i < items.length; i++) {
+                    let item = items[i];
+                    if (item.kind != 'file') { continue; }
+                    let handle = item.getAsFileSystemHandle();
+                    let file = item.getAsFile();
                     if (!file.name.endsWith('ocs')) { continue; }
-                    var reader = new FileReader();
 
+                    // ocsのみ読み込み
+                    var reader = new FileReader();
                     reader.onload = (function (loadFile) {
                         return function (e) {
                             var json = pako.ungzip(e.target.result, { to: 'string' });
                             var formatedJson = JSON.stringify(JSON.parse(json), null, 4);
                             editor.setValue(formatedJson);
-                            console.log(loadFile.name);
                         };
                     })(file);
 
