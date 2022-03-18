@@ -47,9 +47,7 @@
                 }
                 e.stopPropagation();
                 e.preventDefault();
-
-                e.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
-
+                e.dataTransfer.dropEffect = 'copy';
             });
 
             $(document).on('drop', '#editor', function (_e) {
@@ -60,8 +58,7 @@
                 e.stopPropagation();
                 e.preventDefault();
 
-                var files = e.dataTransfer.files; // FileList object.
-
+                var files = e.dataTransfer.files;
                 for (var i = 0, file; file = files[i]; i++) {
                     // ocsのみ読み込み
                     if (!file.name.endsWith('ocs')) { continue; }
