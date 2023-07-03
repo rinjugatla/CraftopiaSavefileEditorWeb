@@ -1,0 +1,47 @@
+.header {
+  height: 5vh;
+  color: white;
+  background-color: #141414;
+  text-align: center;
+}
+
+.contents {
+  height: auto;
+  background-color: #141414;
+}
+
+.split-item {
+  height: 95vh;
+  display: flex;
+}
+
+.split-keys {
+  height: 100%;
+  width: 200px;
+  bottom: 0px;
+  color: white;
+  background-color: #141414;
+}
+
+.db-key.active {
+  color: red;
+}
+
+.split-editor {
+  width: 100% -200px;
+  position: flex;
+}
+
+#editor {
+  position: absolute;
+  top: 25px;
+  right: 0;
+  bottom: 0;
+  left: 200px;
+}
+
+@media all and (min-width: 500px) {
+  .contents {
+    display: flex;
+  }
+}

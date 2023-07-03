@@ -6,7 +6,7 @@
 
 ## エディタ
 
-* https://rinjugatla.github.io/CraftopiaSavefileEditorWeb/editor.html
+* https://rinjugatla.github.io/CraftopiaSavefileEditorWeb/
 
 ## セーブデータ
 
