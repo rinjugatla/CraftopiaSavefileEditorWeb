@@ -200,6 +200,8 @@
                 const value = dbDict[key];
 
                 const isJson = isJsonText(value);
+                updateEditorLanguageHighlight(isJson);
+
                 const text = isJson ? JSON.stringify(JSON.parse(value), null, 4) : value;
                 editor.setValue(text);
             }
@@ -254,8 +256,18 @@
         function initEditor() {
             editor = ace.edit("editor");
             editor.setTheme("ace/theme/twilight");
-            var jsonMode = ace.require("ace/mode/json").Mode;
-            editor.session.setMode(new jsonMode());
+            updateEditorLanguageHighlight(false);
+        }
+
+        // エディタのハイライトを更新
+        function updateEditorLanguageHighlight(toJsonMode) {
+            if (toJsonMode) {
+                const jsonMode = ace.require("ace/mode/json").Mode;
+                editor.session.setMode(new jsonMode());
+            } else {
+                const plainMode = ace.require("ace/mode/plain_text").Mode;
+                editor.session.setMode(new plainMode());
+            }
         }
 
         // json形式チェック
