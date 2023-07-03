@@ -2,37 +2,37 @@
  * 読み込んだファイルハンドル
  * @type {FileSystemFileHandle}
  */
-let fileHandle;
+let _fileHandle;
 /**
  * データベースのテーブルデータ
  * @type {{key: string, value: string}}
  */
-let dbDict;
+let _dbRecords;
 /**
  * データベースのテーブルキーを表示する親要素
  * @type {Element}
  */
-let dbKeysElement;
+let _dbKeysElement;
 /**
  * データベースの編集中のキー要素
  * @type {Element}
  */
-let activeDbElement;
+let _activeDbElement;
 /**
  * データベース
  * @type {SQL.Database}
  */
-let db;
+let _db;
 /**
  * データベース
  * @type {SQL.Database}
  */
-let editor;
+let _editor;
 
 window.addEventListener('load', loadedPage);
 function loadedPage() {
     initEditor();
-    dbKeysElement = document.getElementById('db-keys');
+    _dbKeysElement = document.getElementById('db-keys');
 
     eventHooks();
 }
@@ -41,8 +41,8 @@ function loadedPage() {
  * エディタ初期化
  */
 function initEditor() {
-    editor = ace.edit("editor");
-    editor.setTheme("ace/theme/twilight");
+    _editor = ace.edit("editor");
+    _editor.setTheme("ace/theme/twilight");
     updateEditorLanguageHighlight(false);
 }
 
@@ -80,7 +80,7 @@ function eventHooks() {
         for (var i = 0; i < items.length; i++) {
             let item = items[i];
             if (item.kind != 'file') { continue; }
-            fileHandle = item.getAsFileSystemHandle();
+            _fileHandle = item.getAsFileSystemHandle();
             let file = item.getAsFile();
             if (!file.name.endsWith('db')) { continue; }
 
@@ -107,7 +107,7 @@ function eventHooks() {
         showSelectedValue(key);
 
         switchActiveKeyElement(_e.currentTarget);
-        activeDbElement = _e.currentTarget;
+        _activeDbElement = _e.currentTarget;
     });
 
     /**
@@ -129,11 +129,11 @@ function eventHooks() {
  * 初期化
  */
 function initSession() {
-    db = null;
-    dbDict = {};
-    dbKeysElement.innerHTML = '';
-    activeDbElement = null;
-    editor.setValue('');
+    _db = null;
+    _dbRecords = {};
+    _dbKeysElement.innerHTML = '';
+    _activeDbElement = null;
+    _editor.setValue('');
 }
 
 /**
@@ -143,22 +143,22 @@ function initSession() {
 function loadDb(e) {
     initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` }).then(function (SQL) {
         const uint8 = new Uint8Array(e.target.result);
-        db = new SQL.Database(uint8);
-        const contents = db.exec("SELECT * FROM Entity;");
+        _db = new SQL.Database(uint8);
+        const contents = _db.exec("SELECT * FROM Entity;");
 
         if (contents.length == 0) { return; }
 
         for (const pair of contents[0].values) {
             const key = pair[0];
             const value = pair[1];
-            dbDict[key] = value;
+            _dbRecords[key] = value;
 
             const element = document.createElement('div');
             element.className = 'db-key';
             element.dataset.key = key;
 
             element.innerText = key;
-            dbKeysElement.appendChild(element);
+            _dbKeysElement.appendChild(element);
         }
     });
 }
@@ -167,18 +167,18 @@ function loadDb(e) {
  * 編集中の値を一時保存
  */
 function storeCurrentEditor() {
-    const isReseted = activeDbElement == null;
+    const isReseted = _activeDbElement == null;
     if (isReseted) { return; }
 
-    const isClean = editor.session.getUndoManager().isClean();
+    const isClean = _editor.session.getUndoManager().isClean();
     if (isClean) { return; }
 
-    const value = editor.getValue();
+    const value = _editor.getValue();
     const isJson = isJsonText(value)
     // jsonの場合は改行等を削除
     const text = isJson ? JSON.stringify(JSON.parse(value)) : value;
-    const key = activeDbElement.dataset.key;
-    dbDict[key] = text;
+    const key = _activeDbElement.dataset.key;
+    _dbRecords[key] = text;
 }
 
 /**
@@ -186,13 +186,13 @@ function storeCurrentEditor() {
  * @param {string} key 
  */
 function showSelectedValue(key) {
-    const value = dbDict[key];
+    const value = _dbRecords[key];
 
     const isJson = isJsonText(value);
     updateEditorLanguageHighlight(isJson);
 
     const text = isJson ? JSON.stringify(JSON.parse(value), null, 4) : value;
-    editor.setValue(text);
+    _editor.setValue(text);
 }
 
 /**
@@ -200,7 +200,7 @@ function showSelectedValue(key) {
  * @param {Element} selectElement 
  */
 function switchActiveKeyElement(selectElement) {
-    if (activeDbElement != null) { activeDbElement.classList.remove('active'); }
+    if (_activeDbElement != null) { _activeDbElement.classList.remove('active'); }
     selectElement.classList.add('active');
 }
 
@@ -208,20 +208,20 @@ function switchActiveKeyElement(selectElement) {
  * データベースを保存
  */
 async function saveDb() {
-    if (fileHandle == null) {
+    if (_fileHandle == null) {
         showToastr('warning', 'ファイルが開かれていません。', null);
         return;
     }
 
     storeCurrentEditor();
     try {
-        for (const key in dbDict) {
-            const value = dbDict[key];
-            db.run(`UPDATE Entity SET value = '${value}' WHERE id = '${key}';`)
+        for (const key in _dbRecords) {
+            const value = _dbRecords[key];
+            _db.run(`UPDATE Entity SET value = '${value}' WHERE id = '${key}';`)
         }
-        const binary = db.export();
+        const binary = _db.export();
 
-        const handle = await fileHandle;
+        const handle = await _fileHandle;
         const writer = await handle.createWritable();
         await writer.write(binary);
         await writer.close();
@@ -239,10 +239,10 @@ async function saveDb() {
 function updateEditorLanguageHighlight(toJsonMode) {
     if (toJsonMode) {
         const jsonMode = ace.require("ace/mode/json").Mode;
-        editor.session.setMode(new jsonMode());
+        _editor.session.setMode(new jsonMode());
     } else {
         const plainMode = ace.require("ace/mode/plain_text").Mode;
-        editor.session.setMode(new plainMode());
+        _editor.session.setMode(new plainMode());
     }
 }
 
