@@ -3,20 +3,55 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Craftopia OCS savedata edtor</title>
+    <title>Craftopia DB savedata edtor</title>
 
     <style type="text/css">
-        #editor {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-
-        #filename {
+        .header {
+            height: 5vh;
             color: white;
             background-color: #141414;
-            font-size: large;
             text-align: center;
+        }
+
+        .contents {
+            height: auto;
+            background-color: #141414;
+        }
+
+        .split-item {
+            height: 95vh;
+            display: flex;
+        }
+
+        .split-keys {
+            height: 100%;
+            width: 200px;
+            bottom: 0px;
+            color: white;
+            background-color: #141414;
+        }
+
+        .db-key.active {
+            color: red;
+        }
+
+        .split-editor {
+            width: 100% -200px;
+            position: flex;
+        }
+
+        #editor {
+            position: absolute;
+            top: 25px;
+            right: 0;
+            bottom: 0;
+            left: 200px;
+        }
+
+        @media all and (min-width: 500px) {
+            .contents {
+                display: flex;
+            }
         }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
@@ -30,6 +65,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.0.4/pako.min.js"
         integrity="sha512-EAKzSKex+PXC0U9OG13r1059ysjrjkJEpZoONCnZa0mBROY28iBOOxZSErUVw1LzLr2+U5PhR7zPCPKidUVJqg=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-asm.min.js"
+        integrity="sha512-M9xUGlk2uqL+OPfrMe2ist2SdfNZ3o6D2GXc5f5AFs0p86B21oBWJ7+2ZwOaRuHTTHBbbOrYJzx7O4n4HMaA1A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js" type="text/javascript"
         charset="utf-8"></script>
     <script src="lib/ace/src-min/ace.js" type="text/javascript" charset="utf-8"></script>
@@ -39,8 +77,13 @@
         window.addEventListener('load', loadedPage);
 
         let fileHandle;
+        let dbDict;
+        let dbKeysElement;
+        let activeDbElement;
+        let db;
         function loadedPage() {
             initEditor();
+            dbKeysElement = document.getElementById('db-keys');
 
             // ドラッグ
             $(document).on('dragover', '#editor', function (_e) {
@@ -62,22 +105,20 @@
                 e.stopPropagation();
                 e.preventDefault();
 
+                initSession();
+
                 var items = e.dataTransfer.items;
                 for (var i = 0; i < items.length; i++) {
                     let item = items[i];
                     if (item.kind != 'file') { continue; }
                     fileHandle = item.getAsFileSystemHandle();
                     let file = item.getAsFile();
-                    if (!file.name.endsWith('ocs')) { continue; }
+                    if (!file.name.endsWith('db')) { continue; }
 
                     // ocsのみ読み込み
                     var reader = new FileReader();
                     reader.onload = (function (loadFile) {
-                        return function (e) {
-                            var json = pako.ungzip(e.target.result, { to: 'string' });
-                            var formatedJson = JSON.stringify(JSON.parse(json), null, 4);
-                            editor.setValue(formatedJson);
-                        };
+                        return function (e) { loadDb(e); };
                     })(file);
 
                     reader.readAsArrayBuffer(file);
@@ -86,17 +127,120 @@
                 }
             });
 
+            // 初期化
+            function initSession() {
+                db = null;
+                dbDict = {};
+                dbKeysElement.innerHTML = '';
+                activeDbElement = null;
+                editor.setValue('');
+            }
+
+            // データベースロード
+            function loadDb(e) {
+                initSqlJs({ locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}` }).then(function (SQL) {
+                    // console.log(e.target.result);
+                    const uint8 = new Uint8Array(e.target.result);
+                    db = new SQL.Database(uint8);
+                    const contents = db.exec("SELECT * FROM Entity;");
+
+                    if (contents.length == 0) { return; }
+
+                    for (const pair of contents[0].values) {
+                        const key = pair[0];
+                        const value = pair[1];
+                        dbDict[key] = value;
+
+                        const element = document.createElement('div');
+                        element.className = 'db-key';
+                        element.dataset.key = key;
+
+                        element.innerText = key;
+                        dbKeysElement.appendChild(element);
+                    }
+                });
+            }
+
+            // key切り替え
+            $(document).on('click', '.db-key', async function (_e) {
+                // 現在のvalueを保持
+                storeCurrentEditor();
+
+                const key = _e.currentTarget.dataset.key;
+                showSelectedValue(key);
+
+                switchActiveElement(_e.currentTarget);
+                activeDbElement = _e.currentTarget;
+            });
+
+            // 現在の値を一時保存
+            function storeCurrentEditor() {
+                const isReseted = activeDbElement == null;
+                if (isReseted) { return; }
+
+                const isClean = editor.session.getUndoManager().isClean();
+                if (isClean) { return; }
+
+                const value = editor.getValue();
+                const isJson = isJsonText(value)
+                // jsonの場合は改行等を削除
+                const text = isJson ? JSON.stringify(JSON.parse(value)) : value;
+                const key = activeDbElement.dataset.key;
+                dbDict[key] = text;
+            }
+
+            // 選択したKeyの値をエディタに表示
+            function showSelectedValue(key) {
+                const value = dbDict[key];
+
+                const isJson = isJsonText(value);
+                const text = isJson ? JSON.stringify(JSON.parse(value), null, 4) : value;
+                editor.setValue(text);
+            }
+
+            // 属性切り替え
+            function switchActiveElement(selectElement) {
+                if (activeDbElement != null) { activeDbElement.classList.remove('active'); }
+                selectElement.classList.add('active');
+            }
+
             // Ctrl+Sにフック
             $(window).bind('keydown', async function (e) {
                 if (e.ctrlKey || e.metaKey) {
                     switch (String.fromCharCode(e.which).toLowerCase()) {
                         case 's':
                             e.preventDefault();
-                            await saveOcs();
+                            await saveDb();
                             break;
                     }
                 }
             });
+
+            // データベースセーブ
+            async function saveDb() {
+                if (fileHandle == null) {
+                    showToastr('warning', 'ファイルが開かれていません。', null);
+                    return;
+                }
+
+                storeCurrentEditor();
+                try {
+                    for (const key in dbDict) {
+                        const value = dbDict[key];
+                        db.run(`UPDATE Entity SET value = '${value}' WHERE id = '${key}';`)
+                    }
+                    const binary = db.export();
+
+                    const handle = await fileHandle;
+                    const writer = await handle.createWritable();
+                    await writer.write(binary);
+                    await writer.close();
+
+                    showToastr('success', 'ファイルを保存しました。', null);
+                } catch (error) {
+                    showToastr('error', 'ファイルの保存に失敗しました。', error);
+                }
+            }
         }
 
         // エディタ初期化
@@ -106,6 +250,12 @@
             editor.setTheme("ace/theme/twilight");
             var jsonMode = ace.require("ace/mode/json").Mode;
             editor.session.setMode(new jsonMode());
+        }
+
+        // JSON形式か簡易判定
+        function isJsonText(text) {
+            const isJson = /^(\{|\[)/.test(text);
+            return isJson;
         }
 
         // OCSファイルを上書き保存
@@ -174,8 +324,15 @@
 </head>
 
 <body>
-    <div id="filename">OCSファイルをドラッグ&ドロップしてください。ファイルの保存はCtrl+Sを入力してください。</div>
-    <div id="editor"></div>
+    <div class="header" id="filename">DBファイルをドラッグ&ドロップしてください。ファイルの保存はCtrl+Sを入力してください。</div>
+    <div class="contents">
+        <div class="split-item">
+            <div class="split-keys" id="db-keys"></div>
+        </div>
+        <div class="split-item">
+            <div class="split-editor" id="editor"></div>
+        </div>
+    </div>
 </body>
 
 </html>
