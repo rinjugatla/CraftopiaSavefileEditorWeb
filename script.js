@@ -53,7 +53,7 @@ function eventHooks() {
     /**
      * ドラッグ
      */
-    $(document).on('dragover', '#editor', function (_e) {
+    $(document).on('dragover', '#db-keys, #editor', function (_e) {
         var e = _e;
         if (_e.originalEvent) {
             e = _e.originalEvent;
@@ -66,7 +66,7 @@ function eventHooks() {
     /**
      * ドラック&ドロップでファイルを読み込み
      */
-    $(document).on('drop', '#editor', async function (_e) {
+    $(document).on('drop', '#db-keys, #editor', async function (_e) {
         var e = _e;
         if (_e.originalEvent) {
             e = _e.originalEvent;
