@@ -7,6 +7,10 @@
 
 * https://rinjugatla.github.io/CraftopiaSavefileEditorWeb/legacy/
 
+## セーブデータ
+
+* `C:\Users\%username%\AppData\LocalLow\PocketPair\Craftopia\Save`
+
 ## 機能
 
 ### ファイルを開く
